@@ -15,26 +15,33 @@ with sync_playwright() as p:
     page.locator("div.popup.open i.fa.fa-close").wait_for(state="visible")
     page.locator("div.popup.open i.fa.fa.fa-close").click()
 
-    page.get_by_placeholder("Email o nombre de usuario *").fill("jnardosp@gmail.com")
+    page.get_by_placeholder("Email o nombre de usuario *").fill(os.getenv('USER'))
     page.locator("input[placeholder='Contraseña *'][type='password']").fill(os.getenv('PASSWORD'))
     page.get_by_role("button", name="Entrar").click()
 
     page.goto("https://www.todomecanica.com/categorias-manuales/taller/moto.html")
 
-    # Get all matching elements as a list
-    links = page.locator("div.mancat div.item.c2.rc5-10.pd15 a").all()
+    # Extract href and text upfront as plain data — not element handles
+    brand_count = page.locator("div.mancat div.item.c2.rc5-10.pd15 a").count()
+    brand_links = []
+    for i in range(brand_count):
+        link_el = page.locator("div.mancat div.item.c2.rc5-10.pd15 a").nth(i)
+        href = link_el.get_attribute("href")
+        text = link_el.inner_text()
+        brand_links.append((text, "https://www.todomecanica.com"+href))
 
-    print(f"Found {len(links)} brand links:")
+    print(f"Found {len(brand_links)} brand links:")
 
-    for link in links:
-        href = link.get_attribute("href")
-        text = link.inner_text()
+    for text, href in brand_links:
         print(f"  - {text}: {href}")
+        # Create folder for brand
+        current_download_folder = download_folder+"/"+text
+        os.makedirs(current_download_folder, exist_ok=True)
         
-        link.click()
+        page.goto(href)
         page.wait_for_load_state("networkidle")
 
-        # ✅ Fixed selector: classes must be chained with dots, no spaces
+        # Fixed selector: classes must be chained with dots, no spaces
         # This targets the SECOND div.items inside div.c7.rc10.pd15
         all_items = page.locator("div.c7.rc10.pd15 div.items").nth(1).locator("article.item a").all()
 
@@ -59,7 +66,7 @@ with sync_playwright() as p:
                 download = download_info.value
                 # Save with a clean filename
                 file_name = download.suggested_filename
-                download.save_as(os.path.join(download_folder, file_name))
+                download.save_as(os.path.join(current_download_folder, file_name))
                 print(f"        ✅ Saved: {file_name}")
 
                 page.go_back()
