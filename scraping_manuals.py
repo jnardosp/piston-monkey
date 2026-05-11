@@ -34,9 +34,14 @@ with sync_playwright() as p:
 
     for text, href in brand_links:
         print(f"  - {text}: {href}")
-        # Create folder for brand
         current_download_folder = download_folder+"/"+text
-        os.makedirs(current_download_folder, exist_ok=True)
+        if os.path.isdir(current_download_folder):
+            # If path exists it probably downloaded all manuals, continue with next brand
+            print(f"{text} folder already downloaded, continuing...")
+            continue
+        else: 
+            # Create folder for brand
+            os.makedirs(current_download_folder)
         
         page.goto(href)
         page.wait_for_load_state("networkidle")
